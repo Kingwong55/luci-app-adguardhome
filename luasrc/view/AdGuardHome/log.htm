@@ -1,14 +1,87 @@
 <%+cbi/valueheader%>
-<input type="checkbox" name="NAME" value="reverse" onclick=" return reverselog()" style="vertical-align:middle;height: auto;" checked><%:reverse%></input>
-<%if self.timereplace then%>
-<input type="checkbox" name="NAME" value="localtime" onclick=" return chlogtime()" style="vertical-align:middle;height: auto;" checked><%:localtime%></input><br>
-<%end%>
-<textarea id="cbid.logview.1.conf" class="cbi-input-textarea" style="width: 100%;display:inline" data-update="change" rows="32" cols="60" readonly="readonly" > </textarea>
-<input type="button" class="cbi-button cbi-button-apply" id="apply_update_button" value="<%:dellog%>" onclick=" return apply_del_log() "/>
-<input type="button" class="cbi-button cbi-button-apply" value="<%:download log%>" style=" display:inline;" onclick=" return download_log()" />
+<style>
+/* Modern Light Log Viewer Styles inspired by OpenClash */
+.adg-log-container { margin-top: 15px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; position: relative; }
+.adg-log-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid #e5e7eb; background-color: #f9fafb; border-radius: 8px 8px 0 0; }
+.adg-log-toolbar-left, .adg-log-toolbar-right { display: flex; gap: 15px; align-items: center; }
+.adg-log-checkbox-label { color: #4b5563; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 0; line-height: 1; height: 32px; }
+.adg-log-checkbox-label input[type="checkbox"] { margin: 0 !important; cursor: pointer; position: relative; top: -1px; }
+.adg-log-btn { background-color: #3b82f6; color: #fff; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+.adg-log-btn:hover { background-color: #2563eb; transform: translateY(-1px); }
+.adg-log-btn.danger { background-color: #ef4444; }
+.adg-log-btn.danger:hover { background-color: #dc2626; }
+#cbid\.logview\.1\.conf\.display { width: 100%; height: 600px; background-color: #fafafa; color: #333; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; border: none; padding: 10px; line-height: 1.6; overflow-y: auto; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+#cbid\.logview\.1\.conf\.display::-webkit-scrollbar { width: 10px; height: 10px; }
+#cbid\.logview\.1\.conf\.display::-webkit-scrollbar-track { background: #f1f1f1; }
+#cbid\.logview\.1\.conf\.display::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; }
+#cbid\.logview\.1\.conf\.display::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.log-line { display: flex; gap: 10px; padding: 2px 0; border-bottom: 1px dashed #eee; }
+.log-time { color: #a855f7; white-space: nowrap; }
+.log-level { font-weight: 500; font-size: 12px; padding: 0 6px; border-radius: 4px; white-space: nowrap; height: 18px; line-height: 18px; }
+.log-level-info { color: #0d9488; background-color: #ccfbf1; }
+.log-level-error { color: #e11d48; background-color: #ffe4e6; }
+.log-level-warn { color: #d97706; background-color: #fef3c7; }
+.log-msg { color: #333; word-break: break-word; }
+</style>
+
+<div class="adg-log-container">
+	<div class="adg-log-toolbar">
+		<div class="adg-log-toolbar-left">
+			<label class="adg-log-checkbox-label">
+				<input type="checkbox" name="NAME" value="reverse" onclick="return reverselog()" checked>
+				<%:reverse%>
+			</label>
+			<%if self.timereplace then%>
+			<label class="adg-log-checkbox-label">
+				<input type="checkbox" name="NAME" value="localtime" onclick="return chlogtime()" checked>
+				<%:localtime%>
+			</label>
+			<%end%>
+		</div>
+		<div class="adg-log-toolbar-right">
+			<button type="button" class="adg-log-btn danger" id="apply_update_button" onclick="return apply_del_log()"><%:dellog%></button>
+			<button type="button" class="adg-log-btn" onclick="return download_log()"><%:download log%></button>
+		</div>
+	</div>
+	<textarea id="cbid.logview.1.conf" readonly="readonly" style="display:none;"></textarea>
+	<div id="cbid.logview.1.conf.display"></div>
+</div>
 <script type="text/javascript">//<![CDATA[
 var islogreverse = true;
 var isutc2local = <%=tostring(self.timereplace)%>;
+	function render_html(raw_text) {
+		var lines = raw_text.split('\n');
+		var html = "";
+		for (var i = 0; i < lines.length; i++) {
+			var line = lines[i];
+			if (!line.trim()) continue;
+			var match = line.match(/^(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?) \[(.*?)\] (.*)$/);
+			if (match) {
+				var time = match[1];
+				var level = match[2].toLowerCase();
+				var msg = match[3];
+				var lvlClass = "log-level-info";
+				var lvlText = "提示";
+				if (level === "error" || level === "fatal") { lvlClass = "log-level-error"; lvlText = "错误"; }
+				else if (level === "warning" || level === "warn") { lvlClass = "log-level-warn"; lvlText = "警告"; }
+				else if (level === "info") { lvlClass = "log-level-info"; lvlText = "信息"; }
+				else { lvlClass = "log-level-info"; lvlText = level; }
+				html += '<div class="log-line"><span class="log-time">' + time + '</span><span class="log-level ' + lvlClass + '">[' + lvlText + ']</span><span class="log-msg">' + msg + '</span></div>';
+			} else {
+				html += '<div class="log-line"><span class="log-msg">' + line + '</span></div>';
+			}
+		}
+		return html;
+	}
+
+	function sync_display() {
+		var lv = document.getElementById('cbid.logview.1.conf');
+		var disp = document.getElementById('cbid.logview.1.conf.display');
+		if (lv && disp) {
+			disp.innerHTML = render_html(lv.value || lv.innerHTML);
+		}
+	}
+
 function createAndDownloadFile(fileName, content) {
     var aTag = document.createElement('a');
     var blob = new Blob([content]);
@@ -21,36 +94,45 @@ function download_log(){
 	var lv = document.getElementById('cbid.logview.1.conf');
 	var dt = new Date();
 	var timestamp = (dt.getMonth()+1)+"-"+dt.getDate()+"-"+dt.getHours()+"_"+dt.getMinutes();
-	createAndDownloadFile("AdGuardHome"+timestamp+".log",lv.innerHTML)
+	createAndDownloadFile("AdGuardHome"+timestamp+".log", lv.value || lv.innerHTML)
 	return
 }
 function apply_del_log(){
 	XHR.get('<%=url([[admin]], [[services]], [[AdGuardHome]], [[dodellog]])%>',null,function(x, data){
 	var lv = document.getElementById('cbid.logview.1.conf');
+		lv.value="";
 		lv.innerHTML="";
-	}
-		);
+		sync_display();
+	});
 	return
 }
 function chlogtime(){
 	var lv = document.getElementById('cbid.logview.1.conf');
+	var raw = lv.value || lv.innerHTML;
 	if (isutc2local){
-	lv.innerHTML=line_toUTC(lv.innerHTML).join('\n');
+	raw=line_toUTC(raw).join('\n');
 	isutc2local=false;
 	}else{
-	lv.innerHTML=line_tolocal(lv.innerHTML).join('\n');
+	raw=line_tolocal(raw).join('\n');
 	isutc2local=true;
 	}
+	lv.value = raw;
+	lv.innerHTML = raw;
+	sync_display();
 	return
 }
 function reverselog(){
 	var lv = document.getElementById('cbid.logview.1.conf');
-	lv.innerHTML=lv.innerHTML.split('\n').reverse().join('\n')
+	var raw = lv.value || lv.innerHTML;
+	raw=raw.split('\n').reverse().join('\n')
+	lv.value = raw;
+	lv.innerHTML = raw;
 	if (islogreverse){
 	islogreverse=false;
 	}else{
 	islogreverse=true;
 	}
+	sync_display();
 	return
 }
 function p(s) {
@@ -81,21 +163,25 @@ XHR.poll(3, '<%=url([[admin]], [[services]], [[AdGuardHome]], [[getlog]])%>', nu
 	function(x, data) {
 		var lv = document.getElementById('cbid.logview.1.conf');
 		if (x.responseText && lv) {
+			var current = lv.value || lv.innerHTML;
 			if (isutc2local)
 			{
 				var lines=line_tolocal(x.responseText);
 				if (islogreverse){
-					lv.innerHTML = lines.reverse().join('\n')+lv.innerHTML;
+					current = lines.reverse().join('\n')+'\n'+current;
 				}else{
-					lv.innerHTML += lines.join('\n');
+					current += '\n'+lines.join('\n');
 				}
 			}else{
 				if (islogreverse){
-					lv.innerHTML = x.responseText.split('\n').reverse().join('\n')+lv.innerHTML;
+					current = x.responseText.split('\n').reverse().join('\n')+'\n'+current;
 				}else{
-					lv.innerHTML += x.responseText;
+					current += '\n'+x.responseText;
 				}
 			}
+			lv.value = current.trim();
+			lv.innerHTML = current.trim();
+			sync_display();
 		}
 	}
 );}
@@ -103,7 +189,9 @@ XHR.poll(3, '<%=url([[admin]], [[services]], [[AdGuardHome]], [[getlog]])%>', nu
 poll_check();
 <%else%>
 var lv = document.getElementById('cbid.logview.1.conf');
-lv.innerHTML="<%:Please add log path in config to enable log%>"
+lv.value="<%:Please add log path in config to enable log%>";
+lv.innerHTML="<%:Please add log path in config to enable log%>";
+sync_display();
 <%end%>
 //]]>
 </script>	

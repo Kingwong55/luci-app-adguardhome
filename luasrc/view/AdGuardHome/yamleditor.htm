@@ -7,33 +7,90 @@
 <script src="/luci-static/resources/codemirror/addon/fold/foldcode.js"></script>
 <script src="/luci-static/resources/codemirror/addon/fold/foldgutter.js"></script>
 <script src="/luci-static/resources/codemirror/addon/fold/indent-fold.js"></script>
+<style>
+/* Modern YAML Editor Styles */
+.CodeMirror {
+	border-radius: 8px;
+	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+	border: 1px solid #444;
+	margin-top: 15px;
+	height: 600px !important;
+	font-family: 'Consolas', 'Courier New', monospace;
+	font-size: 14px;
+	line-height: 1.6;
+}
+.adg-editor-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+	padding: 15px 0 5px 0;
+}
+.adg-btn {
+	background-color: #3b82f6;
+	color: #fff;
+	border: none;
+	border-radius: 6px;
+	padding: 8px 16px;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease-in-out;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.adg-btn:hover { background-color: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.adg-btn.secondary { background-color: #475569; }
+.adg-btn.secondary:hover { background-color: #334155; }
+.adg-btn.success { background-color: #10b981; }
+.adg-btn.success:hover { background-color: #059669; }
+</style>
+
 <script type="text/javascript">//<![CDATA[
 var editor = CodeMirror.fromTextArea(document.getElementById("cbid.AdGuardHome.AdGuardHome.escconf"), {
-mode: "text/yaml",    //实现groovy代码高亮
-styleActiveLine: true,
-lineNumbers: true,	//显示行号
-theme: "dracula",	//设置主题
-lineWrapping: true,	//代码折叠
-foldGutter: true,
-gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
-matchBrackets: true //括号匹配
-}
-);
+	mode: "text/yaml",
+	styleActiveLine: true,
+	lineNumbers: true,
+	theme: "dracula",
+	lineWrapping: true,
+	foldGutter: true,
+	gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+	matchBrackets: true
+});
+
 function reload_config(){
-	XHR.get('<%=url([[admin]], [[services]], [[AdGuardHome]], [[reloadconfig]])%>', null,
-	function(x, data) {
-	location.reload();
-	});}
+	XHR.get('<%=url([[admin]], [[services]], [[AdGuardHome]], [[reloadconfig]])%>', null, function(x, data) {
+		location.reload();
+	});
+}
+
 function use_template(){
-	XHR.get('<%=url([[admin]], [[services]], [[AdGuardHome]], [[gettemplateconfig]])%>', null,
-	function(x, data) {
-	editor.setValue(x.responseText)
-	});}
+	XHR.get('<%=url([[admin]], [[services]], [[AdGuardHome]], [[gettemplateconfig]])%>', null, function(x, data) {
+		editor.setValue(x.responseText);
+	});
+}
+
+function backup_config(){
+	var content = editor.getValue();
+	var aTag = document.createElement('a');
+	var blob = new Blob([content], {type: 'text/yaml'});
+	var dt = new Date();
+	var timestamp = dt.getFullYear() + p(dt.getMonth()+1) + p(dt.getDate()) + "_" + p(dt.getHours()) + p(dt.getMinutes());
+	
+	function p(s) { return s < 10 ? '0' + s : s; }
+	
+	aTag.download = "AdGuardHome_Backup_" + timestamp + ".yaml";
+	aTag.href = URL.createObjectURL(blob);
+	aTag.click();
+	URL.revokeObjectURL(blob);
+}
 //]]>
 </script> 
-<%fs=require"nixio.fs"%>
-<%if fs.access("/tmp/AdGuardHometmpconfig.yaml") then%>
-<input type="button" id="apply_update_button" value="<%:Reload Config%>" onclick=" return reload_config() "/>
-<%end%>
-<input type="button" id="template_button" value="<%:Use template%>" onclick=" return use_template() "/>
+
+<div class="adg-editor-toolbar">
+	<button type="button" class="adg-btn success" onclick="return backup_config()"><%:Backup Config%></button>
+	<button type="button" class="adg-btn secondary" onclick="return use_template()"><%:Use template%></button>
+	<% fs=require"nixio.fs" %>
+	<% if fs.access("/tmp/AdGuardHometmpconfig.yaml") then %>
+	<button type="button" class="adg-btn" id="apply_update_button" onclick="return reload_config()"><%:Reload Config%></button>
+	<% end %>
+</div>
 <%+cbi/valuefooter%>

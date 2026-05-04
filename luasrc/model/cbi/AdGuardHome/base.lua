@@ -4,53 +4,143 @@ require("io")
 local m,s,o,o1
 local fs=require"nixio.fs"
 local uci=require"luci.model.uci".cursor()
-local configpath=uci:get("AdGuardHome","AdGuardHome","configpath") or "/etc/AdGuardHome.yaml"
+local configpath=uci:get("AdGuardHome","AdGuardHome","configpath") or "/etc/AdGuardHome/AdGuardHome.yaml"
 local binpath=uci:get("AdGuardHome","AdGuardHome","binpath") or "/usr/bin/AdGuardHome/AdGuardHome"
 httpport=uci:get("AdGuardHome","AdGuardHome","httpport") or "3000"
-m = Map("AdGuardHome", "AdGuard Home")
-m.description = translate("Free and open source, powerful network-wide ads & trackers blocking DNS server.")
-m:section(SimpleSection).template  = "AdGuardHome/AdGuardHome_status"
+m = Map("AdGuardHome")
 
 s = m:section(TypedSection, "AdGuardHome")
+s.description = [[
+<br/>
+<style>
+/* Base Settings Beautification */
+fieldset.cbi-section {
+	background: #ffffff;
+	border-radius: 10px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+	border: 1px solid #f3f4f6;
+	padding: 24px;
+	margin-top: 10px;
+}
+.cbi-value {
+	border-bottom: 1px dashed #e5e7eb;
+	padding: 18px 0;
+	margin: 0;
+	transition: background-color 0.2s;
+}
+.cbi-value:hover {
+	background-color: #f9fafb;
+}
+.cbi-value:last-child {
+	border-bottom: none;
+}
+.cbi-value-title {
+	font-weight: 500;
+	color: #374151;
+	font-size: 14px;
+}
+.adg-web-btn {
+	background-color: #0ea5e9;
+	color: white;
+	border: none;
+	border-radius: 6px;
+	padding: 8px 20px;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	box-shadow: 0 2px 4px rgba(14,165,233,0.2);
+	transition: all 0.2s;
+}
+.adg-web-btn:hover {
+	background-color: #0284c7;
+	transform: translateY(-1px);
+	box-shadow: 0 4px 6px rgba(14,165,233,0.3);
+}
+fieldset.cbi-section input[type="checkbox"], 
+fieldset.cbi-section input[type="radio"] {
+	margin-right: 8px !important;
+	vertical-align: middle !important;
+	position: relative;
+	top: -1px;
+}
+fieldset.cbi-section ul.cbi-checkboxes {
+	padding-left: 0;
+	margin: 0;
+	list-style: none;
+}
+fieldset.cbi-section ul.cbi-checkboxes li,
+fieldset.cbi-section .cbi-value-choice,
+fieldset.cbi-section .cbi-checkbox {
+	margin-bottom: 5px !important;
+	padding-top: 2px !important;
+	padding-bottom: 2px !important;
+	display: flex !important;
+	align-items: center !important;
+	min-height: 24px !important;
+}
+.cbi-section-create, .cbi-section-node > div:last-child {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 15px;
+	padding-top: 15px;
+	padding-bottom: 10px;
+	border-top: 1px solid #f3f4f6;
+}
+.cbi-section-create select, .cbi-section-node > div:last-child select {
+	margin: 0 !important;
+	border-radius: 6px;
+	border: 1px solid #d1d5db;
+	padding: 6px 12px;
+	outline: none;
+	height: 34px;
+}
+.cbi-section-create .cbi-button-add, .cbi-section-node > div:last-child .cbi-button-add {
+	margin: 0 !important;
+	height: 34px;
+	border-radius: 6px;
+	background-color: #f3f4f6;
+	border: 1px solid #d1d5db;
+	color: #374151;
+	padding: 0 16px;
+	font-size: 13px;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+.cbi-section-create .cbi-button-add:hover, .cbi-section-node > div:last-child .cbi-button-add:hover {
+	background-color: #e5e7eb;
+}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(function() {
+        document.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+            // Argon theme text spacing hack
+            var next = cb.nextSibling;
+            if (next && next.nodeType === 3 && next.textContent.trim() !== '') {
+                var span = document.createElement('span');
+                span.style.marginLeft = '8px';
+                span.textContent = next.textContent;
+                cb.parentNode.replaceChild(span, next);
+            } else if (cb.nextElementSibling && cb.nextElementSibling.tagName === 'LABEL') {
+                cb.nextElementSibling.style.marginLeft = '8px';
+            }
+        });
+    }, 500);
+});
+</script>
+]]
 s.anonymous=true
 s.addremove=false
----- enable
-o = s:option(Flag, "enabled", translate("Enable"))
-o.default = 0
-o.optional = false
+
 ---- httpport
 o =s:option(Value,"httpport",translate("Browser management port"))
 o.placeholder=3000
 o.default=3000
 o.datatype="port"
 o.optional = false
-o.description = translate("<input type=\"button\" style=\"width:210px;border-color:Teal; text-align:center;font-weight:bold;color:Green;\" value=\"AdGuardHome Web:"..httpport.."\" onclick=\"window.open('http://'+window.location.hostname+':"..httpport.."/')\"/>")
----- update warning not safe
-local binmtime=uci:get("AdGuardHome","AdGuardHome","binmtime") or "0"
-local e=""
-if not fs.access(configpath) then
-	e=e.." "..translate("no config")
-end
-if not fs.access(binpath) then
-	e=e.." "..translate("no core")
-else
-	local version=uci:get("AdGuardHome","AdGuardHome","version")
-	local testtime=fs.stat(binpath,"mtime")
-	if testtime~=tonumber(binmtime) or version==nil then
-		local tmp=luci.sys.exec(binpath.." -c /dev/null --check-config 2>&1| grep -m 1 -E 'v[0-9.]+' -o")
-		version=string.sub(tmp, 1, -2)
-		if version=="" then version="core error" end
-		uci:set("AdGuardHome","AdGuardHome","version",version)
-		uci:set("AdGuardHome","AdGuardHome","binmtime",testtime)
-		uci:save("AdGuardHome")
-	end
-	e=version..e
-end
-o=s:option(Button,"restart",translate("Update"))
-o.inputtitle=translate("Update core version")
-o.template = "AdGuardHome/AdGuardHome_check"
-o.showfastconfig=(not fs.access(configpath))
-o.description=string.format(translate("core version:").."<strong><font id=\"updateversion\" color=\"green\">%s </font></strong>",e)
+o.description = translate("<input type=\"button\" class=\"adg-web-btn\" value=\"AdGuardHome Web: "..httpport.."\" onclick=\"window.open('http://'+window.location.hostname+':"..httpport.."/')\"/>")
+
 ---- port warning not safe
 local port=luci.sys.exec("awk '/  port:/{printf($2);exit;}' "..configpath.." 2>nul")
 if (port=="") then port="?" end
@@ -97,7 +187,7 @@ o.description=translate("bin use less space,but may have compatibility issues")
 o.rmempty = true
 ---- config path
 o = s:option(Value, "configpath", translate("Config Path"), translate("AdGuardHome config path"))
-o.default     = "/etc/AdGuardHome.yaml"
+o.default     = "/etc/AdGuardHome/AdGuardHome.yaml"
 o.datatype    = "string"
 o.optional = false
 o.rmempty=false
