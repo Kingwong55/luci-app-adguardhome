@@ -3,11 +3,13 @@ local fs=require"nixio.fs"
 local http=require"luci.http"
 local uci=require"luci.model.uci".cursor()
 function index()
-entry({"admin", "services", "AdGuardHome"},alias("admin", "services", "AdGuardHome", "base"),_("AdGuard Home"), 10).dependent = true
+entry({"admin", "services", "AdGuardHome"},alias("admin", "services", "AdGuardHome", "overview"),_("AdGuard Home"), 10).dependent = true
+entry({"admin","services","AdGuardHome","overview"},template("AdGuardHome/overview"),_("Running Status"),0).leaf = true
 entry({"admin","services","AdGuardHome","base"},cbi("AdGuardHome/base"),_("Base Setting"),1).leaf = true
 entry({"admin","services","AdGuardHome","log"},form("AdGuardHome/log"),_("Log"),2).leaf = true
 entry({"admin","services","AdGuardHome","manual"},cbi("AdGuardHome/manual"),_("Manual Config"),3).leaf = true
 entry({"admin","services","AdGuardHome","status"},call("act_status")).leaf=true
+entry({"admin","services","AdGuardHome","startstop"},call("act_startstop")).leaf=true
 entry({"admin", "services", "AdGuardHome", "check"}, call("check_update"))
 entry({"admin", "services", "AdGuardHome", "doupdate"}, call("do_update"))
 entry({"admin", "services", "AdGuardHome", "getlog"}, call("get_log"))
@@ -49,11 +51,42 @@ function reload_config()
 end
 function act_status()
 	local e={}
-	local binpath=uci:get("AdGuardHome","AdGuardHome","binpath")
+	local uci_c = uci.cursor()
+	local binpath=uci_c:get("AdGuardHome","AdGuardHome","binpath") or "/usr/bin/AdGuardHome/AdGuardHome"
 	e.running=luci.sys.call("pgrep "..binpath.." >/dev/null")==0
 	e.redirect=(fs.readfile("/var/run/AdGredir")=="1")
+	
+	local version=uci_c:get("AdGuardHome","AdGuardHome","version")
+	local binmtime=uci_c:get("AdGuardHome","AdGuardHome","binmtime") or "0"
+	local testtime=fs.stat(binpath,"mtime")
+	
+	if not testtime then
+		version = "no core"
+	elseif testtime~=tonumber(binmtime) or version==nil then
+		local tmp=luci.sys.exec(binpath.." -c /dev/null --check-config 2>&1| grep -m 1 -E 'v[0-9.]+' -o")
+		version=string.sub(tmp, 1, -2)
+		if version=="" then version="core error" end
+		uci_c:set("AdGuardHome","AdGuardHome","version",version)
+		uci_c:set("AdGuardHome","AdGuardHome","binmtime",testtime)
+		uci_c:save("AdGuardHome")
+	end
+	
+	e.core_version=version or "?"
+	e.ui_version="1.8-r20"
 	http.prepare_content("application/json")
+	http.header("Cache-Control", "no-cache, no-store, must-revalidate")
+	http.header("Pragma", "no-cache")
+	http.header("Expires", "0")
 	http.write_json(e)
+end
+function act_startstop()
+	local action=http.formvalue("action")
+	if action=="start" then
+		luci.sys.call("uci set AdGuardHome.AdGuardHome.enabled=1 && uci commit AdGuardHome && /etc/init.d/AdGuardHome start >/dev/null 2>&1")
+	elseif action=="stop" then
+		luci.sys.call("uci set AdGuardHome.AdGuardHome.enabled=0 && uci commit AdGuardHome && /etc/init.d/AdGuardHome stop >/dev/null 2>&1")
+	end
+	act_status()
 end
 function do_update()
 	fs.writefile("/var/run/lucilogpos","0")

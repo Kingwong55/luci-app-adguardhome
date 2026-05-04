@@ -322,7 +322,7 @@ msgid "Not redirect"
 msgstr "不重定向"
 
 msgid "Open AdGuardHome Web"
-msgstr "打开网页管理面板"
+msgstr "打开 AdGuardHome 网页版"
 
 msgid "RUNNING"
 msgstr "运行中"
@@ -334,7 +334,7 @@ msgid "UI Version"
 msgstr "界面版本"
 
 msgid "Update core version"
-msgstr "更新内核"
+msgstr "更新核心版本"
 
 msgid "Updated"
-msgstr "已完成"
+msgstr "已更新"
