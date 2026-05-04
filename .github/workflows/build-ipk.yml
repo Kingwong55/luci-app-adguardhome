@@ -46,11 +46,16 @@ jobs:
       - name: Build po2lmo tool
         run: |
           cd sdk
-          PO2LMO_DIR=$(find feeds/luci -path "*/src/po2lmo.c" -printf "%h\n" | head -n 1)
-          echo "Found po2lmo source at: $PO2LMO_DIR"
-          ls "$PO2LMO_DIR"/*.c
+          echo "=== Searching for po2lmo source files ==="
+          find feeds/luci -name "po2lmo.c" -o -name "sfh_hash.c" -o -name "template_lmo.h" | sort
+          PO2LMO_C=$(find feeds/luci -name "po2lmo.c" | head -n 1)
+          SFH_C=$(find feeds/luci -name "sfh_hash.c" | head -n 1)
+          HEADER_DIR=$(find feeds/luci -name "template_lmo.h" -printf "%h\n" | head -n 1)
+          echo "po2lmo.c: $PO2LMO_C"
+          echo "sfh_hash.c: $SFH_C"
+          echo "header dir: $HEADER_DIR"
           mkdir -p staging_dir/host/bin
-          gcc -o staging_dir/host/bin/po2lmo "$PO2LMO_DIR/po2lmo.c" "$PO2LMO_DIR/sfh_hash.c" -I"$PO2LMO_DIR" -include "$PO2LMO_DIR/template_lmo.h"
+          gcc -o staging_dir/host/bin/po2lmo "$PO2LMO_C" "$SFH_C" -I"$HEADER_DIR"
           ls -la staging_dir/host/bin/po2lmo
           echo "$(pwd)/staging_dir/host/bin" >> $GITHUB_PATH
 
