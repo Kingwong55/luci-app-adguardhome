@@ -46,24 +46,23 @@ jobs:
       - name: Build po2lmo tool
         run: |
           cd sdk
-          make package/luci-base/host/compile V=s -j$(nproc) 2>/dev/null || true
-          # Fallback: build po2lmo from source if not found
-          if ! command -v po2lmo &>/dev/null && ! ls staging_dir/host/bin/po2lmo 2>/dev/null; then
-            if [ -d feeds/luci/modules/luci-base/src ]; then
-              cd feeds/luci/modules/luci-base/src
-              gcc -o po2lmo po2lmo.c -I. 2>/dev/null || gcc -o po2lmo po2lmo.c 2>/dev/null || true
-              if [ -f po2lmo ]; then
-                cp po2lmo $GITHUB_WORKSPACE/sdk/staging_dir/host/bin/
-              fi
-              cd $GITHUB_WORKSPACE/sdk
+          ./scripts/feeds update luci
+          ./scripts/feeds install luci-base
+          make package/luci-base/host/compile V=s -j$(nproc) || true
+          # Fallback: build po2lmo from source
+          if [ ! -f staging_dir/host/bin/po2lmo ]; then
+            PO2LMO_SRC=$(find feeds/luci -name po2lmo.c | head -n 1)
+            if [ -n "$PO2LMO_SRC" ]; then
+              mkdir -p staging_dir/host/bin
+              gcc -o staging_dir/host/bin/po2lmo "$PO2LMO_SRC" -I$(dirname "$PO2LMO_SRC")
             fi
           fi
-          export PATH="$GITHUB_WORKSPACE/sdk/staging_dir/host/bin:$PATH"
+          # Persist PATH for subsequent steps
+          echo "$(pwd)/staging_dir/host/bin" >> $GITHUB_PATH
 
       - name: Build
         run: |
           cd sdk
-          export PATH="$GITHUB_WORKSPACE/sdk/staging_dir/host/bin:$PATH"
           make defconfig
           make package/luci-app-adguardhome/compile V=s -j$(nproc) || make package/luci-app-adguardhome/compile V=s -j1
 
