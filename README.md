@@ -1,5 +1,7 @@
 # luci-app-adguardhome
-复杂的AdGuardHome的openwrt的luci界面
+功能强大且界面现代化的 OpenWrt AdGuardHome LuCI 插件
+
+> **特别鸣谢**：本项目基于 [rufengsuixing/luci-app-adguardhome](https://github.com/rufengsuixing/luci-app-adguardhome) 的优秀源码开发并进行了全面的 UI 现代化重构与核心功能修复。
 
  - 可以管理网页端口
  - luci下载/更新核心版本（支持自定义链接下载）
@@ -16,9 +18,14 @@
  - 自定义运行日志路径
  - gfwlist 删除/添加/定义上游dns服务器 另外安利一下https://github.com/rufengsuixing/luci-app-autoipsetadder
  - 修改网页登陆密码
+ - **全新现代化 UI 设计**：
+   - 基础设置采用卡片式圆角布局，优化间距与按钮交互
+   - 运行日志重构为浅色现代主题，支持日志等级彩色高亮显示
+   - 手动设置引入 CodeMirror 现代代码编辑器，支持 YAML 语法高亮
  - 倒序/正序 查看/删除/备份 每3秒更新显示运行日志 + 本地浏览器时区转换
  - 手动修改配置文件
-   - 支持yaml编辑器
+   - 支持强大的 yaml 语法高亮编辑器
+   - 支持一键**备份/下载**当前配置文件
    - 模板快速配置
  - 系统升级保留勾选文件
  - 开机启动后当网络准备好时重启adh(3分钟超时，主要用于防止过滤器更新失败)
