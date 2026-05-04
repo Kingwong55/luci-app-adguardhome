@@ -46,18 +46,12 @@ jobs:
       - name: Build po2lmo tool
         run: |
           cd sdk
-          make defconfig
-          make package/luci-base/host/compile V=s -j$(nproc) 2>/dev/null || true
-          # Fallback: build po2lmo from source with sfh_hash
-          if [ ! -f staging_dir/host/bin/po2lmo ]; then
-            PO2LMO_DIR=$(find feeds/luci -path "*/src/po2lmo.c" -printf "%h\n" | head -n 1)
-            if [ -n "$PO2LMO_DIR" ]; then
-              mkdir -p staging_dir/host/bin
-              gcc -o staging_dir/host/bin/po2lmo "$PO2LMO_DIR/po2lmo.c" "$PO2LMO_DIR/sfh_hash.c" -I"$PO2LMO_DIR"
-            fi
-          fi
+          PO2LMO_DIR=$(find feeds/luci -path "*/src/po2lmo.c" -printf "%h\n" | head -n 1)
+          echo "Found po2lmo source at: $PO2LMO_DIR"
+          ls "$PO2LMO_DIR"/*.c
+          mkdir -p staging_dir/host/bin
+          gcc -o staging_dir/host/bin/po2lmo "$PO2LMO_DIR/po2lmo.c" "$PO2LMO_DIR/sfh_hash.c" -I"$PO2LMO_DIR" -include "$PO2LMO_DIR/template_lmo.h"
           ls -la staging_dir/host/bin/po2lmo
-          # Persist PATH for subsequent steps
           echo "$(pwd)/staging_dir/host/bin" >> $GITHUB_PATH
 
       - name: Build
