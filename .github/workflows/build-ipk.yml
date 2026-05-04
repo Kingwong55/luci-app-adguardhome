@@ -54,6 +54,7 @@ jobs:
           mkdir -p output
           find sdk/bin/ -name "luci-*adguardhome*.ipk" -exec cp {} output/ \;
           find sdk/bin/ -name "luci-*AdGuardHome*.ipk" -exec cp {} output/ \;
+          find sdk/ -name "AdGuardHome*.lmo" -exec cp {} output/ \;
           ls -la output/
 
       - name: Upload to Release
