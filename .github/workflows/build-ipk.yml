@@ -43,22 +43,6 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install luci-app-adguardhome
 
-      - name: Build po2lmo tool
-        run: |
-          cd sdk
-          echo "=== Searching for po2lmo source files ==="
-          find feeds/luci -name "po2lmo.c" -o -name "sfh_hash.c" -o -name "template_lmo.h" | sort
-          PO2LMO_C=$(find feeds/luci -name "po2lmo.c" | head -n 1)
-          SFH_C=$(find feeds/luci -name "sfh_hash.c" | head -n 1)
-          HEADER_DIR=$(find feeds/luci -name "template_lmo.h" -printf "%h\n" | head -n 1)
-          echo "po2lmo.c: $PO2LMO_C"
-          echo "sfh_hash.c: $SFH_C"
-          echo "header dir: $HEADER_DIR"
-          mkdir -p staging_dir/host/bin
-          gcc -o staging_dir/host/bin/po2lmo "$PO2LMO_C" "$SFH_C" -I"$HEADER_DIR"
-          ls -la staging_dir/host/bin/po2lmo
-          echo "$(pwd)/staging_dir/host/bin" >> $GITHUB_PATH
-
       - name: Build
         run: |
           cd sdk
